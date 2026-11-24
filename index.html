@@ -1,0 +1,1258 @@
+++
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>追剧自由资源库</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-soft: #111827;
+      --panel: #151b23;
+      --panel-2: #1c2430;
+      --line: #243040;
+      --text: #f5f7fa;
+      --muted: #9ca3af;
+      --accent: #22c55e;
+      --accent-2: #60a5fa;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --ok: #10b981;
+      --radius: 12px;
+      --shadow: 0 10px 30px rgba(0,0,0,.22);
+      font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+
+    html[data-theme="light"] {
+      --bg: #f5f7fa;
+      --bg-soft: #eef2f7;
+      --panel: #ffffff;
+      --panel-2: #eef2f7;
+      --line: #d7dce4;
+      --text: #111827;
+      --muted: #6b7280;
+    }
+    :focus-visible {
+      outline: 2px solid rgba(96,165,250,.9);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
+    .shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(13,17,23,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .header-inner {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 0;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      flex: 0 0 auto;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #059669, #2563eb);
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+
+    .brand-copy {
+      min-width: 0;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 650;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-sub {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tools {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .search {
+      position: relative;
+      flex: 1;
+      min-width: 180px;
+      max-width: 480px;
+    }
+
+    .search-input {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 42px 0 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+    }
+
+    .search-clear.show { display: inline-flex; }
+
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .icon-btn:hover { color: var(--text); }
+
+    .icon-btn svg { width: 18px; height: 18px; }
+
+    main {
+      padding: 22px 0 48px;
+    }
+
+    .intro {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .intro-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        radial-gradient(120% 120% at 0% 0%, rgba(34,197,94,.10), transparent 42%),
+        radial-gradient(140% 140% at 100% 0%, rgba(96,165,250,.12), transparent 46%),
+        var(--panel);
+      padding: 18px;
+    }
+
+    .intro-card h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .intro-card p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .meta-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-2);
+      padding: 12px;
+    }
+
+    .meta-label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .meta-value {
+      margin-top: 4px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 88px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .filter-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .filter-item {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-2);
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .filter-item[data-active="true"] {
+      border-color: rgba(96,165,250,.65);
+      background: rgba(96,165,250,.10);
+    }
+
+    .filter-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .filter-count {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .chip[data-active="true"] {
+      color: var(--text);
+      border-color: rgba(16,185,129,.6);
+      background: rgba(16,185,129,.12);
+    }
+
+    .content {
+      min-width: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .toolbar-title {
+      flex: 1 1 220px;
+      min-width: 0;
+    }
+
+    .toolbar-title strong {
+      font-size: 16px;
+    }
+
+    .toolbar-title span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .sort-box {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .sort-box select {
+      min-height: 38px;
+      padding: 0 12px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px;
+    }
+
+    .item {
+      display: grid;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
+        var(--panel);
+      padding: 14px;
+      box-shadow: var(--shadow);
+      min-height: 190px;
+    }
+
+    .item-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .item-name {
+      font-size: 16px;
+      font-weight: 650;
+      line-height: 1.35;
+    }
+
+    .item-url {
+      color: var(--muted);
+      font-size: 12px;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+
+    .item-summary {
+      color: var(--muted);
+      min-height: 40px;
+    }
+
+    .item-foot {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--panel-2);
+    }
+
+    .badge svg { width: 14px; height: 14px; }
+
+    .badge--featured {
+      color: #fff;
+      background: linear-gradient(90deg, #16a34a, #2563eb);
+      border-color: rgba(37,99,235,.55);
+    }
+
+    .badge--recommended { color: #bbf7d0; background: rgba(16,185,129,.14); border-color: rgba(16,185,129,.35); }
+    .badge--caution { color: #fde68a; background: rgba(245,158,11,.13); border-color: rgba(245,158,11,.35); }
+    .badge--removed { color: #fca5a5; background: rgba(239,68,68,.13); border-color: rgba(239,68,68,.35); }
+    .badge--unknown { color: var(--muted); }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      overflow: hidden;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .score-row {
+      display: grid;
+      gap: 6px;
+    }
+
+    .score-label {
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .score-value { color: var(--text); font-variant-numeric: tabular-nums; }
+
+    .score-track {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(148,163,184,.2);
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #16a34a, #60a5fa);
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      color: var(--muted);
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    .detail-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: stretch;
+      justify-content: flex-end;
+      background: rgba(3,7,18,.72);
+    }
+
+    .detail-modal.show { display: flex; }
+
+    .detail-panel {
+      width: min(720px, 100%);
+      max-width: 100%;
+      background: var(--bg-soft);
+      border-left: 1px solid var(--line);
+      overflow: auto;
+      padding: 18px;
+    }
+
+    .detail-panel h3 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+
+    .detail-section {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .detail-section h4 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .detail-list {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .detail-list strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .download-tile {
+      display: grid;
+      gap: 4px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 10px;
+      padding: 10px;
+      min-width: 0;
+    }
+
+    .download-tile strong {
+      font-size: 13px;
+    }
+
+    .download-tile a {
+      color: var(--muted);
+      font-size: 12px;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+
+    .download-tile a:hover { color: var(--text); }
+
+    .close-detail {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+    }
+
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+      background: var(--panel);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translate(-50%, 12px);
+      background: rgba(17,24,39,.96);
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 10px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 60;
+      max-width: min(92vw, 520px);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      padding: 18px 0 28px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .intro {
+        grid-template-columns: 1fr;
+      }
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        position: static;
+      }
+      .header-inner {
+        grid-template-columns: 1fr;
+      }
+      .tools {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .search {
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+      .download-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell header-inner">
+      <a class="brand" href="#" data-action="home">
+        <span class="brand-mark" aria-hidden="true">TV</span>
+        <span class="brand-copy">
+          <span class="brand-title">追剧自由资源库</span>
+          <span class="brand-sub">可检索、可筛选、可分享的网页端</span>
+        </span>
+      </a>
+
+      <div class="tools">
+        <div class="search">
+          <input id="search" class="search-input" type="search" placeholder="搜索名称、标签、简介、域名…" autocomplete="off" />
+          <button id="searchClear" class="search-clear" type="button" aria-label="清空搜索">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <button class="icon-btn" id="shareBtn" type="button" title="复制链接" aria-label="复制链接">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.585 14.586A4 4 0 0 0 11.5 10c0-1.4.7-2.6 1.6-3.4L12 5.5 7 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.415 9.414A4 4 0 0 0 12.5 14c0 1.4-.7 2.6-1.6 3.4L12 18.5l5 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="icon-btn" id="themeToggle" type="button" title="切换主题" aria-label="切换主题">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+
+      <div aria-live="polite" id="status" style="display:none"></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="shell">
+      <section class="intro">
+        <div class="intro-card">
+          <h1>一站式查看影视、播放器、配置与下载资源</h1>
+          <p>数据来源：awesome-zhuiju-free-weekly-2026-W45。这里整合了在线影视、影视应用、TVBox 配置、磁力搜索、字幕、开源项目与 Android 下载包，支持搜索、分类、评分和可用性状态查看。</p>
+        </div>
+        <div class="meta-grid" id="meta"></div>
+      </section>
+
+      <div class="layout">
+        <aside class="sidebar">
+          <div class="card">
+            <h2>分类</h2>
+            <div class="filter-list" id="categoryFilters"></div>
+          </div>
+
+          <div class="card">
+            <h2>状态</h2>
+            <div class="chips" id="statusFilters"></div>
+          </div>
+
+          <div class="card">
+            <h2>排序</h2>
+            <div class="sort-box">
+              <label for="sortSelect" style="font-size:13px">按什么排</label>
+              <select id="sortSelect">
+                <option value="featured">推荐优先</option>
+                <option value="name">名称</option>
+                <option value="added">最近收录</option>
+                <option value="score">综合评分</option>
+              </select>
+            </div>
+          </div>
+        </aside>
+
+        <section class="content">
+          <div class="toolbar">
+            <div class="toolbar-title">
+              <strong id="resultTitle">全部资源</strong>
+              <div><span id="resultCount"></span></div>
+            </div>
+            <button class="icon-btn" id="resetBtn" type="button" title="重置筛选" aria-label="重置筛选">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 5v5h5M19 19v-5h-5M5 10a7 7 0 0 1 12-3M19 14a7 7 0 0 1-12 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+
+          <div class="grid" id="grid"></div>
+          <div class="empty" id="empty" hidden>
+            <div style="font-size:16px;font-weight:600;margin-bottom:6px">没有匹配结果</div>
+            <div>换个关键词试试，或者清除筛选条件。</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <div class="detail-modal" id="detailModal" hidden>
+    <div class="detail-panel" id="detailPanel">
+      <button class="icon-btn close-detail" id="closeDetail" type="button" aria-label="关闭详情">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <footer>
+    <div class="shell">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>本页面为本地静态网站，打开即用，可直接部署到 Vercel / Netlify / GitHub Pages。</div>
+        <div id="metaFooter"></div>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    const CATEGORY_LABELS = {
+      online_video: '在线影视',
+      video_app: '影视应用',
+      tvbox_config: 'TVBox 配置',
+      magnet_search: '磁力搜索',
+      cloud_search: '网盘搜索',
+      subtitles: '字幕',
+      player: '播放器',
+      subscription: '订阅源',
+      open_source: '开源项目'
+    };
+
+    const STATUS_LABELS = {
+      recommended: '推荐',
+      caution: '注意',
+      removed: '已下架',
+      unknown: '未知'
+    };
+
+    const STATUS_BADGE = {
+      recommended: 'recommended',
+      caution: 'caution',
+      removed: 'removed',
+      unknown: 'unknown'
+    };
+
+    const AVAILABILITY_LABELS = {
+      reachable: '可访问',
+      restricted: '受限',
+      failed: '失败',
+      unknown: '未检测'
+    };
+
+    let catalog = null;
+    let filters = {
+      query: '',
+      category: 'all',
+      status: 'all',
+      sort: 'featured'
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    async function loadCatalog() {
+      try {
+      let res = await fetch('/api/resources');
+      if (!res.ok) {
+        res = await fetch('catalog.json');
+        if (!res.ok) throw new Error('数据加载失败');
+      }
+      catalog = await res.json();
+      } catch (err) {
+        console.error(err);
+        $('resultTitle').textContent = '数据加载失败';
+        $('resultCount').textContent = '请确认 catalog.json 与 index.html 在同一目录。';
+        $('empty').hidden = false;
+        return;
+      }
+      renderAll();
+    }
+
+    function normalize(record) {
+      const verification = record.verification || {};
+      const status = verification.status || 'unknown';
+      return {
+        ...record,
+        normalizedStatus: status,
+        normalizedStatusLabel: STATUS_LABELS[status] || status,
+        availability: record.availability ? {
+          ...record.availability,
+          label: AVAILABILITY_LABELS[record.availability.status] || record.availability.status
+        } : null,
+        scores: record.scores ? Object.fromEntries(
+          Object.entries(record.scores).map(([k, v]) => [k, Number(v) || 0])
+        ) : null
+      };
+    }
+
+    function renderAll() {
+      renderMeta();
+      renderFilters();
+      renderResults();
+    }
+
+    function renderMeta() {
+      const total = catalog.records.length;
+      const categories = new Set(catalog.records.map(r => r.category));
+      const featured = catalog.records.filter(r => r.featured).length;
+      const updated = catalog.updated_at || '未知';
+
+      $('meta').innerHTML = `
+        <div class="meta-item"><div class="meta-label">资源总数</div><div class="meta-value">${total}</div></div>
+        <div class="meta-item"><div class="meta-label">分类数</div><div class="meta-value">${categories.size}</div></div>
+        <div class="meta-item"><div class="meta-label">精选资源</div><div class="meta-value">${featured}</div></div>
+        <div class="meta-item"><div class="meta-label">最近更新</div><div class="meta-value">${updated}</div></div>
+      `;
+      $('metaFooter').textContent = `数据更新：${updated} · 共 ${total} 条`;
+    }
+
+    function renderFilters() {
+      const counts = {};
+      for (const record of catalog.records) {
+        counts[record.category] = (counts[record.category] || 0) + 1;
+      }
+
+      const categories = Object.keys(CATEGORY_LABELS)
+        .filter(cat => counts[cat])
+        .sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+
+      $('categoryFilters').innerHTML = `
+        <label class="filter-item" data-category="all">
+          <span class="filter-name">全部</span>
+          <span class="filter-count">${catalog.records.length}</span>
+        </label>
+        ${categories.map(cat => `
+          <label class="filter-item" data-category="${cat}">
+            <span class="filter-name">${CATEGORY_LABELS[cat] || cat}</span>
+            <span class="filter-count">${counts[cat]}</span>
+          </label>
+        `).join('')}
+      `;
+
+      const statusCounts = { all: catalog.records.length, recommended: 0, caution: 0, removed: 0, unknown: 0 };
+      for (const record of catalog.records) {
+        const normalized = normalize(record).normalizedStatus;
+        if (statusCounts[normalized] !== undefined) statusCounts[normalized] += 1;
+      }
+
+      $('statusFilters').innerHTML = `
+        ${Object.entries(STATUS_LABELS).map(([key, label]) => `
+          <button class="chip" data-status="${key}" type="button">${label} <span class="filter-count">${statusCounts[key] || 0}</span></button>
+        `).join('')}
+        <button class="chip" data-status="all" type="button">全部 <span class="filter-count">${statusCounts.all}</span></button>
+      `;
+    }
+
+    function getFilteredRecords() {
+      const q = filters.query.trim().toLowerCase();
+      const records = catalog.records.map(normalize);
+
+      return records.filter(record => {
+        if (filters.category !== 'all' && record.category !== filters.category) return false;
+        if (filters.status !== 'all' && record.normalizedStatus !== filters.status) return false;
+        if (!q) return true;
+
+        const haystack = [
+          record.name,
+          record.url,
+          record.summary,
+          record.summary_short,
+          CATEGORY_LABELS[record.category] || record.category,
+          ...(record.tags || []),
+          ...(record.platforms || []),
+          ...(record.availability ? [record.availability.label] : [])
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        return haystack.includes(q);
+      });
+    }
+
+    function sortRecords(records) {
+      const sorted = [...records];
+
+      sorted.sort((a, b) => {
+        if (filters.sort === 'name') {
+          return a.name.localeCompare(b.name, 'zh-CN');
+        }
+
+        if (filters.sort === 'added') {
+          const at = a.added_at || '';
+          const bt = b.added_at || '';
+          return bt.localeCompare(at);
+        }
+
+        if (filters.sort === 'score') {
+          const score = (rec) => rec.scores ? Object.values(rec.scores).reduce((acc, v) => acc + v, 0) : -1;
+          return score(b) - score(a);
+        }
+
+        const featured = Number(!!b.featured) - Number(!!a.featured);
+        if (featured !== 0) return featured;
+
+        const verified = STATUS_RANK[b.normalizedStatus] - STATUS_RANK[a.normalizedStatus];
+        if (verified !== 0) return verified;
+
+        const name = a.name.localeCompare(b.name, 'zh-CN');
+        if (name !== 0) return name;
+        return 0;
+      });
+
+      return sorted;
+    }
+
+    const STATUS_RANK = {
+      recommended: 0,
+      caution: 1,
+      unknown: 2,
+      removed: 3
+    };
+
+    function renderResults() {
+      const records = sortRecords(getFilteredRecords());
+      $('grid').innerHTML = records.map(itemCard).join('');
+      $('empty').hidden = records.length > 0;
+
+      const categoryLabel = filters.category === 'all' ? '全部资源' : (CATEGORY_LABELS[filters.category] || filters.category);
+      const statusLabel = filters.status === 'all' ? '' : STATUS_LABELS[filters.status] + '状态';
+      $('resultTitle').textContent = statusLabel ? `${categoryLabel} · ${statusLabel}` : categoryLabel;
+      $('resultCount').textContent = `共 ${records.length} 条结果`;
+
+      document.querySelectorAll('#categoryFilters .filter-item').forEach(el => {
+        el.dataset.active = el.dataset.category === filters.category ? 'true' : 'false';
+      });
+      document.querySelectorAll('#statusFilters .chip').forEach(el => {
+        el.dataset.active = el.dataset.status === filters.status ? 'true' : 'false';
+      });
+    }
+
+    function itemCard(record) {
+      const statusBadge = record.normalizedStatus !== 'unknown'
+        ? `<span class="badge badge--${STATUS_BADGE[record.normalizedStatus]}">${record.normalizedStatusLabel}</span>`
+        : '';
+
+      const featured = record.featured ? `<span class="badge badge--featured">精选</span>` : '';
+      const availability = record.availability
+        ? `<span class="badge badge--unknown">可用性 ${record.availability.label}</span>`
+        : '';
+
+      const tags = (record.tags || record.platforms || []).slice(0, 5).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
+
+      const downloads = record.downloads && Object.keys(record.downloads).length
+        ? `<span class="badge">下载 ${Object.keys(record.downloads).length} 个</span>`
+        : '';
+
+      const score = record.scores ? Object.entries(record.scores)
+        .map(([key, value]) => `
+          <div class="score-row">
+            <div class="score-label"><span>${SCORE_LABELS[key] || key}</span><span class="score-value">${Number(value).toFixed(1)}/5</span></div>
+            <div class="score-track"><div class="score-fill" style="width:${Math.max(0, Math.min(100, (value / 5) * 100))}%"></div></div>
+          </div>
+        `).join('') : '';
+
+      const actions = `
+        <div class="item-actions">
+          ${record.url ? `<a class="badge" target="_blank" rel="noopener" href="${escapeHtml(record.url)}">打开</a>` : ''}
+          ${record.link_url ? `<a class="badge" target="_blank" rel="noopener" href="${escapeHtml(record.link_url)}">备用</a>` : ''}
+          ${downloads}
+          <button class="badge" type="button" data-detail="${record.id}">详情</button>
+        </div>
+      `;
+
+      return `
+        <article class="item" data-id="${record.id}">
+          <div class="item-head">
+            <div class="avatar" aria-hidden="true">${record.image ? `<img src="${record.image}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : `<span>${escapeHtml(record.name.slice(0, 1))}</span>`}</div>
+            <div>
+              <div class="item-name">${escapeHtml(record.name)}</div>
+              <div class="item-url">${escapeHtml(record.url || '本地下载资源')}</div>
+            </div>
+          </div>
+
+          <div class="item-summary">${escapeHtml(record.summary || record.summary_short || '')}</div>
+
+          <div class="tag-row">${featured}${statusBadge}${availability}${downloads}</div>
+
+          <div class="tag-row">${tags}</div>
+
+          ${score ? `<div class="score-block">${score}</div>` : ''}
+
+          <div class="item-foot">${actions}</div>
+        </article>
+      `;
+    }
+
+    const SCORE_LABELS = {
+      more: '资源丰富',
+      speed: '访问速度',
+      clean: '干净程度',
+      stable: '稳定性',
+      ease: '易用性'
+    };
+
+    function openDetail(id) {
+      const record = catalog.records.find(item => item.id === id);
+      if (!record) return;
+
+      const normalized = normalize(record);
+      const risk = normalized.risks || {};
+      const riskLabel = { high: '高', medium: '中', low: '低', unknown: '未知' };
+
+      const downloads = normalized.downloads && Object.keys(normalized.downloads).length
+        ? `<div class="detail-section"><h4>下载入口</h4><div class="download-grid">${Object.entries(normalized.downloads).map(([provider, url]) => `
+          <div class="download-tile"><strong>${escapeHtml(provider)}</strong><a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a></div>
+        `).join('')}</div></div>` : '';
+
+      $('detailContent').innerHTML = `
+        <div>
+          <h3>${escapeHtml(normalized.name)}</h3>
+          <div class="item-summary" style="color:var(--muted)">${escapeHtml(normalized.summary || normalized.summary_short || '')}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+            ${normalized.url ? `<a class="badge" href="${escapeHtml(normalized.url)}" target="_blank" rel="noopener">打开页面</a>` : ''}
+            ${normalized.link_url ? `<a class="badge" href="${escapeHtml(normalized.link_url)}" target="_blank" rel="noopener">备用链接</a>` : ''}
+          </div>
+        </div>
+
+        ${downloads}
+
+        <div class="detail-section">
+          <h4>验证与风险</h4>
+          <div class="detail-list">
+            <div><strong>状态</strong>：${escapeHtml(normalized.normalizedStatusLabel)}</div>
+            ${normalized.verification?.notes ? `<div><strong>备注</strong>：${escapeHtml(normalized.verification.notes)}</div>` : ''}
+            <div><strong>版权</strong>：${riskLabel[risk.copyright] || '未知'} · <strong>安全</strong>：${riskLabel[risk.safety] || '未知'} · <strong>隐私</strong>：${riskLabel[risk.privacy] || '未知'}</div>
+          </div>
+        </div>
+
+        ${normalized.availability ? `
+        <div class="detail-section">
+          <h4>可用性</h4>
+          <div class="detail-list">
+            <div><strong>状态</strong>：${escapeHtml(normalized.availability.label)}</div>
+            <div><strong>检测时间</strong>：${escapeHtml(normalized.availability.checked_at || '未知')}</div>
+            ${normalized.availability.response_ms ? `<div><strong>响应</strong>：${normalized.availability.response_ms} ms</div>` : ''}
+            ${normalized.availability.final_url ? `<div><strong>最终链接</strong>：${escapeHtml(normalized.availability.final_url)}</div>` : ''}
+          </div>
+        </div>` : ''}
+
+        ${normalized.github ? `
+        <div class="detail-section">
+          <h4>开源信息</h4>
+          <div class="detail-list">
+            <div><strong>仓库</strong>：${escapeHtml(normalized.github.full_name || normalized.github.repo || '')}</div>
+            ${normalized.github.stars ? `<div><strong>Stars</strong>：${normalized.github.stars}</div>` : ''}
+            ${normalized.github.pushed_at ? `<div><strong>最近更新</strong>：${escapeHtml(normalized.github.pushed_at)}</div>` : ''}
+          </div>
+        </div>` : ''}
+      `;
+
+      $('detailModal').hidden = false;
+      $('detailModal').classList.add('show');
+    }
+
+    function closeDetail() {
+      const modal = $('detailModal');
+      modal.classList.remove('show');
+      modal.hidden = true;
+    }
+
+    function showToast(message) {
+      const toast = $('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      window.clearTimeout(showToast._t);
+      showToast._t = window.setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function readFiltersFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      filters.query = params.get('q') || '';
+      filters.category = params.get('category') || 'all';
+      filters.status = params.get('status') || 'all';
+      filters.sort = params.get('sort') || 'featured';
+    }
+
+    function writeFiltersToURL() {
+      const params = new URLSearchParams();
+      if (filters.query) params.set('q', filters.query);
+      if (filters.category !== 'all') params.set('category', filters.category);
+      if (filters.status !== 'all') params.set('status', filters.status);
+      if (filters.sort !== 'featured') params.set('sort', filters.sort);
+      const qs = params.toString();
+      const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+      history.replaceState(null, '', url);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      readFiltersFromURL();
+
+      const searchInput = $('search');
+      searchInput.value = filters.query;
+      $('searchClear').classList.toggle('show', !!filters.query);
+      $('sortSelect').value = filters.sort;
+
+      searchInput.addEventListener('input', () => {
+        filters.query = searchInput.value;
+        $('searchClear').classList.toggle('show', !!searchInput.value);
+        writeFiltersToURL();
+        renderResults();
+      });
+
+      $('searchClear').addEventListener('click', () => {
+        filters.query = '';
+        searchInput.value = '';
+        $('searchClear').classList.remove('show');
+        writeFiltersToURL();
+        renderResults();
+      });
+
+      $('sortSelect').addEventListener('change', () => {
+        filters.sort = $('sortSelect').value;
+        writeFiltersToURL();
+        renderResults();
+      });
+
+      $('categoryFilters').addEventListener('click', (event) => {
+        const item = event.target.closest('.filter-item');
+        if (!item) return;
+        filters.category = item.dataset.category;
+        writeFiltersToURL();
+        renderResults();
+      });
+
+      $('statusFilters').addEventListener('click', (event) => {
+        const item = event.target.closest('.chip');
+        if (!item) return;
+        filters.status = item.dataset.status;
+        writeFiltersToURL();
+        renderResults();
+      });
+
+      $('resetBtn').addEventListener('click', () => {
+        filters = { query: '', category: 'all', status: 'all', sort: 'featured' };
+        searchInput.value = '';
+        $('searchClear').classList.remove('show');
+        $('sortSelect').value = 'featured';
+        writeFiltersToURL();
+        renderResults();
+      });
+
+      $('shareBtn').addEventListener('click', async () => {
+        const link = window.location.href;
+        try {
+          await navigator.clipboard.writeText(link);
+          showToast('当前链接已复制，可直接分享给其他设备');
+        } catch (err) {
+          showToast('复制失败，请手动复制地址栏链接');
+        }
+      });
+
+      const themeToggle = $('themeToggle');
+      themeToggle.addEventListener('click', () => {
+        const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('zhuiju-theme', next);
+      });
+
+      document.addEventListener('click', (event) => {
+        const detailBtn = event.target.closest('[data-detail]');
+        if (detailBtn) {
+          openDetail(detailBtn.dataset.detail);
+          return;
+        }
+
+        const item = event.target.closest('.item');
+        if (item && !event.target.closest('a') && !event.target.closest('button')) {
+          openDetail(item.dataset.id);
+        }
+      });
+
+      $('closeDetail').addEventListener('click', closeDetail);
+      $('detailModal').addEventListener('click', (event) => {
+        if (event.target === event.currentTarget) closeDetail();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeDetail();
+        if (event.key === '/' && document.activeElement !== searchInput) {
+          event.preventDefault();
+          searchInput.focus();
+        }
+      });
+
+      loadCatalog();
+    });
+  </script>
+</body>
+</html>
