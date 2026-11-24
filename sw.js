@@ -1,5 +1,5 @@
-const CACHE_NAME = 'zhuiju-shell-v1';
-const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/icon.svg', '/manifest.webmanifest'];
+const CACHE_NAME = 'zhuiju-shell-v2';
+const SHELL = ['./', './index.html', './style.css', './app.js', './icon.svg', './manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)));
@@ -19,7 +19,6 @@ self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
   if (event.request.method !== 'GET' || requestUrl.origin !== self.location.origin) return;
   if (requestUrl.pathname.startsWith('/api/')) return;
-
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -27,6 +26,6 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/')))
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./')))
   );
 });
