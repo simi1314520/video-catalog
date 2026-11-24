@@ -19,9 +19,59 @@ const STATUS_LABEL = {
   unknown: '未检测'
 };
 
+// GitHub Pages 是静态托管，没有 /api/* 服务时，用 catalog.json 直接渲染。
+// 下面两份表与 server.js 保持一致，Railway 仍优先走 /api/*，行为不变。
+const CATEGORY_LABELS = {
+  online_video: '在线影视',
+  video_app: '影视APP',
+  tvbox_config: 'TVBox 配置',
+  magnet_search: '磁力 BT',
+  cloud_search: '网盘搜索',
+  subtitles: '字幕',
+  player: '播放器/空壳',
+  subscription: '直播源',
+  open_source: '开源项目'
+};
+
+const SEARCH_TEMPLATES = {
+  kankanya: 'https://www.kankanya.me/search/-------------.html?wd={q}',
+  'no-video': '__ORIGIN__/search/{q}',
+  sotvla: '__ORIGIN__/search.php?q={q}',
+  appmovie: '__ORIGIN__/index.php/vod/search.html?wd={q}',
+  'ai-movie': '__ORIGIN__/?s={q}',
+  czzymovie: 'https://www.4kcz.com/nimasile?q={q}',
+  'auete-video': '__ORIGIN__/aeete5so.php?searchword={q}',
+  netflixgc: '__ORIGIN__/vodsearch/{q}----------1---.html',
+  nfyingshi: '__ORIGIN__/search?q={q}',
+  dbku: '__ORIGIN__/vodsearch/-------------.html?wd={q}',
+  'yingmao-cangku': '__ORIGIN__/search.html?wd={q}',
+  'guangsu-yingshi': '__ORIGIN__/search.php?searchword={q}',
+  fdzys: '__ORIGIN__/vodsearch/-------------.html?wd={q}',
+  zndy: '__ORIGIN__/index.php/vod/search.html?wd={q}',
+  yingshidaquan: '__ORIGIN__/search.php?q={q}',
+  juzong: '__ORIGIN__/index.php/vodsearch/-------------.html?wd={q}',
+  jianyunys: 'https://jisuzhuiju.com/search?keyword={q}',
+  pianku: '__ORIGIN__/vodsearch/-------------.html?wd={q}',
+  '66-dapianwang': '__ORIGIN__/vodsearch/-------------.html?wd={q}',
+  didahd: '__ORIGIN__/search/-------------.html?wd={q}',
+  zhuiying: '__ORIGIN__/index.php/vod/search.html?wd={q}',
+  dhvideo: '__ORIGIN__/search/{q}',
+  zip0: '__ORIGIN__/search?q={q}',
+  'sa-video': '__ORIGIN__/search/{q}',
+  subhd: '__ORIGIN__/search/{q}',
+  'kanmovie-com-34': '__ORIGIN__/search?q={q}',
+  'yingxivod-com-53': '__ORIGIN__/index.php/vod/search.html?wd={q}',
+  'kuake-so-1': '__ORIGIN__/search?wd={q}',
+  'ys-cxkjg-cn-39': '__ORIGIN__/search?wd={q}',
+  'bt-yingshi': '__ORIGIN__/search?q={q}',
+  btshijiewang: '__ORIGIN__/?s={q}'
+};
+
+const STATUS_ORDER = ['reachable', 'restricted', 'unreachable', 'unknown'];
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').catch(() => {});
   });
 }
 
@@ -44,13 +94,12 @@ const store = {
 };
 
 function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  return String(value ?? '').replace(/[&<>']/g, (character) => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
-    '"': '&quot;',
     "'": '&#39;'
-  }[character]));
+  }[character])).replace(/\x22/g, '&quot;');
 }
 
 function stars(value) {
@@ -83,9 +132,147 @@ function pushHistory(query, hits) {
   store.set('zj_history', state.history);
 }
 
+async function fetchJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('HTTP ' + response.status + ' ' + url);
+  return response.json();
+}
+
+function originOf(record) {
+  try {
+    return new URL(record.url).origin;
+  } catch {
+    return record.url || '';
+  }
+}
+
+function normalizeStatus(record) {
+  const status = record.availability?.status;
+  if (status === 'reachable' || status === 'restricted' || status === 'unreachable') {
+    return status;
+  }
+  return 'unknown';
+}
+
+function fallbackTemplate(record) {
+  return originOf(record) + '/?wd={q}';
+}
+
+function templateFor(record) {
+  return SEARCH_TEMPLATES[record.id] || fallbackTemplate(record);
+}
+
+function withOrigin(template, origin) {
+  return String(template).replaceAll('__ORIGIN__', origin);
+}
+
+function toPublicResource(record) {
+  const status = normalizeStatus(record);
+  const origin = originOf(record);
+  return {
+    id: record.id,
+    name: record.name,
+    url: record.url,
+    link_url: record.link_url || null,
+    category: record.category,
+    category_label: CATEGORY_LABELS[record.category] || record.category,
+    summary: record.summary || record.summary_short || '',
+    scores: record.scores || null,
+    risks: record.risks || null,
+    verification: record.verification?.status || 'unknown',
+    featured: Boolean(record.featured),
+    featured_order: Number(record.featured_order) || 999,
+    searchable: Boolean(SEARCH_TEMPLATES[record.id]),
+    needs_vpn: (record.tags || []).some((tag) => /需梯子|梯子|VPN/i.test(tag)),
+    status,
+    http_status: record.availability?.http_status || null,
+    response_ms: record.availability?.response_ms || null,
+    origin,
+    search_template: templateFor(record)
+  };
+}
+
+function buildCatalogFromRaw(raw) {
+  const resources = raw.records.map(toPublicResource);
+  const counts = {
+    total: resources.length,
+    reachable: 0,
+    restricted: 0,
+    unreachable: 0,
+    unknown: 0,
+    searchable: resources.filter((record) => record.searchable).length
+  };
+  for (const record of resources) counts[record.status] += 1;
+  const categoryCounts = {};
+  for (const record of resources) {
+    categoryCounts[record.category] = (categoryCounts[record.category] || 0) + 1;
+  }
+  const categories = Object.keys(CATEGORY_LABELS)
+    .filter((key) => categoryCounts[key])
+    .map((key) => ({ key, label: CATEGORY_LABELS[key], count: categoryCounts[key] }))
+    .sort((a, b) => b.count - a.count);
+  resources.sort((a, b) => {
+    const featured = Number(b.featured) - Number(a.featured);
+    if (featured) return featured;
+    const status = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
+    if (status) return status;
+    return a.name.localeCompare(b.name, 'zh-CN');
+  });
+  return {
+    generated_at: new Date().toISOString(),
+    source_updated_at: raw.updated_at || '未知',
+    availability_generated_at: raw.availability_generated_at || null,
+    counts,
+    categories,
+    resources
+  };
+}
+
+function buildTemplatesFromRaw(raw) {
+  const sites = {};
+  for (const record of raw.records) {
+    const origin = originOf(record);
+    const explicit = Boolean(SEARCH_TEMPLATES[record.id]);
+    const template = templateFor(record);
+    sites[record.id] = {
+      name: record.name,
+      origin,
+      category: record.category,
+      ok: explicit,
+      kind: 'html',
+      template,
+      sample_url: withOrigin(template, origin).replace('{q}', encodeURIComponent('阿凡达')),
+      error: explicit ? null : '没有已验证的站内搜索模板，将尝试通用参数'
+    };
+  }
+  return {
+    generated_at: new Date().toISOString(),
+    probe_keyword: '阿凡达',
+    summary: {
+      total: Object.keys(sites).length,
+      ok: Object.values(sites).filter((site) => site.ok).length,
+      failed: Object.values(sites).filter((site) => !site.ok).length
+    },
+    sites
+  };
+}
+
+async function loadCatalogAndTemplates() {
+  try {
+    const [catalog, templates] = await Promise.all([
+      fetchJson('/api/catalog'),
+      fetchJson('/api/templates')
+    ]);
+    return { catalog, templates };
+  } catch {
+    const raw = await fetchJson('catalog.json');
+    return { catalog: buildCatalogFromRaw(raw), templates: buildTemplatesFromRaw(raw) };
+  }
+}
+
 function siteTemplate(record) {
   const site = state.templates?.sites?.[record.id];
-  return site?.template || record.search_template || `${record.origin}/?wd={q}`;
+  return site?.template || record.search_template || record.origin + '/?wd={q}';
 }
 
 function siteSearchUrl(record, query) {
@@ -96,23 +283,16 @@ function siteSearchUrl(record, query) {
 
 async function boot() {
   loadLocal();
-  const [catalog, templates] = await Promise.all([
-    fetch('/api/catalog').then((response) => response.json()),
-    fetch('/api/templates').then((response) => response.json())
-  ]);
-
+  const { catalog, templates } = await loadCatalogAndTemplates();
   state.catalog = catalog;
   state.templates = templates;
-
   const counts = catalog.counts;
-  $('#brand-sub').textContent = `${counts.total} 个资源 · ${counts.reachable} 个在线 · 数据 ${catalog.source_updated_at}`;
+  $('#brand-sub').textContent = counts.total + ' 个资源 · ' + counts.reachable + ' 个在线 · 数据 ' + catalog.source_updated_at;
   $('#site-count').textContent = countSearchable();
-  $('#meta').textContent = `目录生成于 ${new Date(catalog.generated_at).toLocaleString('zh-CN')}`;
-
+  $('#meta').textContent = '目录生成于 ' + new Date(catalog.generated_at).toLocaleString('zh-CN');
   renderNavChips();
   renderNavGrid();
   renderSearchChipsCount();
-
   const initialQuery = new URLSearchParams(window.location.search).get('q')?.trim();
   if (initialQuery) {
     $('#q').value = initialQuery;
@@ -139,10 +319,9 @@ function renderSearchChipsCount() {
     magnet_search: pool.filter((record) => record.category === 'magnet_search').length,
     subtitles: pool.filter((record) => record.category === 'subtitles').length
   };
-
   $$('#chips .chip').forEach((element) => {
     const label = element.textContent.replace(/\s*\d+\s*$/, '').trim();
-    element.innerHTML = `${esc(label)}<span class="n">${counts[element.dataset.cat] || 0}</span>`;
+    element.innerHTML = esc(label) + `<span class='n'>${counts[element.dataset.cat] || 0}</span>`;
   });
 }
 
@@ -163,27 +342,32 @@ $('#search-form').addEventListener('submit', (event) => {
 async function doSearch() {
   const query = $('#q').value.trim();
   if (!query || state.loading) return;
-
   const url = new URL(window.location.href);
   url.searchParams.set('q', query);
   history.replaceState(null, '', url);
-
   state.loading = true;
   $('#go').disabled = true;
   $('#go').textContent = '搜索中…';
   $('#empty').classList.add('hidden');
   $('#results').innerHTML = '';
   $('#statusline').classList.remove('hidden');
-  $('#statusline').innerHTML = '<span class="pill">正在并发搜索各站点…</span>';
-
+  $('#statusline').innerHTML = `<span class='pill'>正在并发搜索各站点…</span>`;
   const started = performance.now();
   try {
-    const category = state.cat ? `&cats=${encodeURIComponent(state.cat)}` : '';
-    const data = await fetch(`/api/search?q=${encodeURIComponent(query)}${category}`).then((response) => response.json());
+    const category = state.cat ? '&cats=' + encodeURIComponent(state.cat) : '';
+    const data = await fetchJson('/api/search?q=' + encodeURIComponent(query) + category);
     renderResults(data, Math.round(performance.now() - started));
     pushHistory(query, data.results.length);
   } catch (error) {
-    $('#statusline').innerHTML = `<span class="pill" style="color:var(--bad)">搜索失败：${esc(error.message)}</span>`;
+    $('#statusline').innerHTML = `<span class='pill'>静态部署无法聚合搜索，已列出各站搜索页</span>`;
+    $('#empty').classList.remove('hidden');
+    $('#empty').innerHTML = `
+      <div class='empty-ico'>🔍</div>
+      <p>“${esc(query)}”无法通过服务器聚合搜索</p>
+      <p class='muted'>GitHub Pages 是静态托管，没有 /api/search 服务。请直接带着关键词去各站搜索。</p>
+      ${renderSiteSearchLinks(query)}
+    `;
+    pushHistory(query, 0);
   } finally {
     state.loading = false;
     $('#go').disabled = false;
@@ -196,19 +380,18 @@ function renderSiteSearchLinks(query) {
     (record) => record.category === 'online_video'
   );
   if (!records.length) return '';
-
   return `
-    <section class="empty-site-links">
+    <section class='empty-site-links'>
       <h3>在各站搜索“${esc(query)}”</h3>
-      <div class="nav-grid">
+      <div class='nav-grid'>
         ${records.map((record) => `
-          <a class="nav-card" href="${esc(siteSearchUrl(record, query))}" target="_blank" rel="noopener noreferrer">
-            <div class="name">${esc(record.name)}</div>
-            <div class="url">${esc(hostOf(record.origin || record.url))}</div>
-            <div class="desc">打开站点搜索页，关键词已自动填写。</div>
-            <div class="foot">
-              <span class="st ${esc(record.status)}"><i></i>${STATUS_LABEL[record.status] || record.status}</span>
-              <span class="tag-mini">去搜索 ↗</span>
+          <a class='nav-card' href='${esc(siteSearchUrl(record, query))}' target='_blank' rel='noopener noreferrer'>
+            <div class='name'>${esc(record.name)}</div>
+            <div class='url'>${esc(hostOf(record.origin || record.url))}</div>
+            <div class='desc'>打开站点搜索页，关键词已自动填写。</div>
+            <div class='foot'>
+              <span class='st ${esc(record.status)}'><i></i>${STATUS_LABEL[record.status] || record.status}</span>
+              <span class='tag-mini'>去搜索 ↗</span>
             </div>
           </a>
         `).join('')}
@@ -220,29 +403,26 @@ function renderSiteSearchLinks(query) {
 function renderResults(data, elapsed) {
   const okSites = data.sites.filter((site) => site.ok);
   const totalHits = data.results.length;
-
   $('#statusline').innerHTML = [
-    `<span class="pill"><i class="dot" style="background:var(--ok)"></i>${okSites.length} 个站点响应</span>`,
-    `<span class="pill"><i class="dot" style="background:var(--accent-2)"></i>${totalHits} 条结果</span>`,
-    `<span class="pill">${data.took_ms ?? elapsed} ms</span>`,
+    `<span class='pill'><i class='dot' style='background:var(--ok)'></i>${okSites.length} 个站点响应</span>`,
+    `<span class='pill'><i class='dot' style='background:var(--accent-2)'></i>${totalHits} 条结果</span>`,
+    `<span class='pill'>${data.took_ms ?? elapsed} ms</span>`,
     ...data.sites
       .filter((site) => !site.ok)
       .slice(0, 4)
-      .map((site) => `<span class="pill" title="${esc(site.error || '')}"><i class="dot" style="background:var(--bad)"></i>${esc(site.name)}</span>`)
+      .map((site) => `<span class='pill' title='${esc(site.error || '')}'><i class='dot' style='background:var(--bad)'></i>${esc(site.name)}</span>`)
   ].join('');
-
   if (!totalHits) {
     const failed = data.sites.length - okSites.length;
     $('#empty').classList.remove('hidden');
     $('#empty').innerHTML = `
-      <div class="empty-ico">🕵️</div>
+      <div class='empty-ico'>🕵️</div>
       <p>“${esc(data.query)}”暂时没有聚合结果</p>
-      <p class="muted">${okSites.length} 个站点正常响应${failed ? `，${failed} 个站点请求失败` : ''}。也可以直接带着关键词去各站搜索。</p>
+      <p class='muted'>${okSites.length} 个站点正常响应${failed ? `，${failed} 个站点请求失败` : ''}。也可以直接带着关键词去各站搜索。</p>
       ${renderSiteSearchLinks(data.query)}
     `;
     return;
   }
-
   const groups = new Map();
   for (const item of data.results) {
     if (!groups.has(item.site_id)) {
@@ -250,26 +430,24 @@ function renderResults(data, elapsed) {
     }
     groups.get(item.site_id).items.push(item);
   }
-
   let rank = 0;
   const html = [];
   for (const group of [...groups.values()].sort((a, b) => b.items.length - a.items.length)) {
-    html.push(`<div class="group-title">${esc(group.name)} · ${group.items.length} 条</div>`);
+    html.push(`<div class='group-title'>${esc(group.name)} · ${group.items.length} 条</div>`);
     for (const item of group.items) {
       rank += 1;
       html.push(`
-        <a class="result" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">
-          <span class="rank">${rank}</span>
-          <span class="body">
-            <span class="title">${esc(item.title)}</span>
-            <span class="src">${esc(hostOf(item.url))}<span class="badge">${esc(item.site_name)}</span></span>
+        <a class='result' href='${esc(item.url)}' target='_blank' rel='noopener noreferrer'>
+          <span class='rank'>${rank}</span>
+          <span class='body'>
+            <span class='title'>${esc(item.title)}</span>
+            <span class='src'>${esc(hostOf(item.url))}<span class='badge'>${esc(item.site_name)}</span></span>
           </span>
-          <span class="ext">↗</span>
+          <span class='ext'>↗</span>
         </a>
       `);
     }
   }
-
   $('#results').innerHTML = html.join('');
   state.lastResults = data.results;
 }
@@ -277,11 +455,11 @@ function renderResults(data, elapsed) {
 function renderNavChips() {
   const categories = state.catalog.categories;
   const html = [
-    `<button class="chip active" data-cat="">全部<span class="n">${state.catalog.counts.total}</span></button>`
+    `<button class='chip active' data-cat=''>全部<span class='n'>${state.catalog.counts.total}</span></button>`
   ];
   for (const category of categories) {
     html.push(
-      `<button class="chip" data-cat="${esc(category.key)}">${esc(category.label)}<span class="n">${category.count}</span></button>`
+      `<button class='chip' data-cat='${esc(category.key)}'>${esc(category.label)}<span class='n'>${category.count}</span></button>`
     );
   }
   $('#nav-chips').innerHTML = html.join('');
@@ -298,14 +476,14 @@ $('#nav-chips').addEventListener('click', (event) => {
 
 function navCard(record) {
   return `
-    <a class="nav-card" href="${esc(record.url)}" target="_blank" rel="noopener noreferrer" data-id="${esc(record.id)}">
-      <span class="fav-btn ${state.favs.has(record.id) ? 'on' : ''}" data-fav="${esc(record.id)}" title="收藏/取消收藏">★</span>
-      <div class="name">${esc(record.name)}${record.needs_vpn ? ' <span class="tag-mini tag-vpn">需梯子</span>' : ''}</div>
-      <div class="url">${esc(record.origin || record.url)}</div>
-      <div class="desc">${esc(record.summary)}</div>
-      <div class="foot">
-        <span class="st ${esc(record.status)}"><i></i>${STATUS_LABEL[record.status] || record.status}</span>
-        <span class="stars" title="推荐指数 ${record.scores?.more ?? '-'}">${stars(record.scores?.more)}</span>
+    <a class='nav-card' href='${esc(record.url)}' target='_blank' rel='noopener noreferrer' data-id='${esc(record.id)}'>
+      <span class='fav-btn ${state.favs.has(record.id) ? 'on' : ''}' data-fav='${esc(record.id)}' title='收藏/取消收藏'>★</span>
+      <div class='name'>${esc(record.name)}${record.needs_vpn ? ' <span class=\'tag-mini tag-vpn\'>需梯子</span>' : ''}</div>
+      <div class='url'>${esc(record.origin || record.url)}</div>
+      <div class='desc'>${esc(record.summary)}</div>
+      <div class='foot'>
+        <span class='st ${esc(record.status)}'><i></i>${STATUS_LABEL[record.status] || record.status}</span>
+        <span class='stars' title='推荐指数 ${record.scores?.more ?? '-'}'>${stars(record.scores?.more)}</span>
       </div>
     </a>
   `;
@@ -334,7 +512,7 @@ document.addEventListener('click', (event) => {
 function renderFavs() {
   const items = state.catalog.resources.filter((record) => state.favs.has(record.id));
   if (!items.length) {
-    $('#fav-list').innerHTML = '<p class="muted">还没有收藏。去“站点导航”点卡片右上角的 ★。</p>';
+    $('#fav-list').innerHTML = `<p class='muted'>还没有收藏。去“站点导航”点卡片右上角的 ★。</p>`;
     return;
   }
   $('#fav-list').innerHTML = items.map(navCard).join('');
@@ -342,13 +520,13 @@ function renderFavs() {
 
 function renderHistory() {
   if (!state.history.length) {
-    $('#history-list').innerHTML = '<p class="muted">还没有搜索记录。</p>';
+    $('#history-list').innerHTML = `<p class='muted'>还没有搜索记录。</p>`;
     return;
   }
   $('#history-list').innerHTML = state.history.map((item) => `
-    <span class="hist" data-q="${esc(item.q)}">
-      ${esc(item.q)} <span class="t">${item.n} 条</span>
-      <button class="del" data-del="${esc(item.q)}" title="删除">×</button>
+    <span class='hist' data-q='${esc(item.q)}'>
+      ${esc(item.q)} <span class='t'>${item.n} 条</span>
+      <button class='del' data-del='${esc(item.q)}' title='删除'>×</button>
     </span>
   `).join('');
 }
@@ -362,7 +540,6 @@ $('#history-list').addEventListener('click', (event) => {
     renderHistory();
     return;
   }
-
   const chip = event.target.closest('[data-q]');
   if (!chip) return;
   switchView('search');
@@ -378,7 +555,7 @@ $('#history-clear').addEventListener('click', () => {
 
 async function fetchOne(keyword) {
   try {
-    return await fetch(`/api/search?q=${encodeURIComponent(keyword)}`).then((response) => response.json());
+    return await fetchJson('/api/search?q=' + encodeURIComponent(keyword));
   } catch {
     return { query: keyword, results: [], sites: [] };
   }
@@ -398,26 +575,21 @@ async function runCompare() {
         .filter(Boolean)
     )
   ].slice(0, 5);
-
   if (keywords.length < 2) {
-    $('#cmp-out').innerHTML = '<p class="muted" style="margin-top:14px">至少输入两个关键词，用逗号分隔。</p>';
+    $('#cmp-out').innerHTML = `<p class='muted' style='margin-top:14px'>至少输入两个关键词，用逗号分隔。</p>`;
     return;
   }
-
   const button = $('#cmp-go');
   button.disabled = true;
   button.textContent = '对比中…';
-  $('#cmp-out').innerHTML = `<p class="muted" style="margin-top:14px">正在并行搜索 ${keywords.length} 个关键词…</p>`;
-
+  $('#cmp-out').innerHTML = `<p class='muted' style='margin-top:14px'>正在并行搜索 ${keywords.length} 个关键词…</p>`;
   const data = await Promise.all(keywords.map(fetchOne));
   button.disabled = false;
   button.textContent = '开始对比';
-
   const siteNames = new Map();
   for (const result of data) {
     for (const site of result.sites) siteNames.set(site.id, site.name);
   }
-
   const rows = [...siteNames.entries()].map(([id, name]) => ({
     id,
     name,
@@ -427,17 +599,15 @@ async function runCompare() {
     b.counts.reduce((sum, value) => sum + value, 0) -
     a.counts.reduce((sum, value) => sum + value, 0)
   );
-
   const totals = data.map((result) => result.results.length);
   const shown = rows.filter((row) => row.counts.some((count) => count > 0)).slice(0, 18);
   const head = `<tr><th>站点</th>${data.map((result) => `<th>${esc(result.query)}</th>`).join('')}</tr>`;
   const body = shown.map((row) =>
     `<tr><td>${esc(row.name)}</td>${row.counts.map((count) =>
-      `<td class="${count === 0 ? 'zero' : count >= 5 ? 'hot' : ''}">${count || '—'}</td>`
+      `<td class='${count === 0 ? 'zero' : count >= 5 ? 'hot' : ''}'>${count || '—'}</td>`
     ).join('')}</tr>`
   ).join('');
-  const total = `<tr class="total"><td>合计</td>${totals.map((count) => `<td>${count}</td>`).join('')}</tr>`;
-
+  const total = `<tr class='total'><td>合计</td>${totals.map((count) => `<td>${count}</td>`).join('')}</tr>`;
   const titleSets = data.map((result) =>
     new Set(result.results.map((item) => item.title.replace(/\s+/g, '')))
   );
@@ -448,27 +618,26 @@ async function runCompare() {
     }).slice(0, 6);
     if (!unique.length) return '';
     return `
-      <div class="box">
+      <div class='box'>
         <h3>只在“${esc(result.query)}”出现</h3>
         <ul>${unique.map((item) =>
-          `<li>${esc(item.title)} <span style="color:#4a5a75">· ${esc(item.site_name)}</span></li>`
+          `<li>${esc(item.title)} <span style='color:#4a5a75'>· ${esc(item.site_name)}</span></li>`
         ).join('')}</ul>
       </div>
     `;
   }).join('');
-
   const best = data.reduce((a, b) => (b.results.length > a.results.length ? b : a), data[0]);
   $('#cmp-out').innerHTML = `
-    <p class="muted" style="margin-top:16px">结果最多：<strong style="color:var(--ok)">${esc(best.query)}</strong>（${best.results.length} 条）</p>
-    <table class="cmp-table"><thead>${head}</thead><tbody>${body}${total}</tbody></table>
-    ${uniqueBoxes ? `<div class="cmp-unique">${uniqueBoxes}</div>` : ''}
+    <p class='muted' style='margin-top:16px'>结果最多：<strong style='color:var(--ok)'>${esc(best.query)}</strong>（${best.results.length} 条）</p>
+    <table class='cmp-table'><thead>${head}</thead><tbody>${body}${total}</tbody></table>
+    ${uniqueBoxes ? `<div class='cmp-unique'>${uniqueBoxes}</div>` : ''}
   `;
 }
 
 function switchView(view) {
   $$('.tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.view === view));
   $$('.view').forEach((element) => element.classList.remove('active'));
-  $(`#view-${view}`).classList.add('active');
+  $('#view-' + view).classList.add('active');
   if (view === 'search') $('#q').focus();
   if (view === 'mine') {
     renderHistory();
@@ -481,5 +650,5 @@ $$('.tab').forEach((tab) => {
 });
 
 boot().catch((error) => {
-  $('#brand-sub').textContent = `加载失败：${error.message}`;
+  $('#brand-sub').textContent = '加载失败：' + error.message;
 });
