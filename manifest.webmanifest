@@ -2,15 +2,15 @@
   "name": "追剧聚合",
   "short_name": "追剧聚合",
   "description": "一个搜索框，并发搜遍所有追剧站点，结果汇总到一处。",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0b0e14",
   "theme_color": "#0b0e14",
   "lang": "zh-CN",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
