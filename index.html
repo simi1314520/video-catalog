@@ -6,13 +6,13 @@
   <meta name="theme-color" content="#0b0e14" />
   <meta name="description" content="一个搜索框，并发搜遍所有追剧站点，结果汇总到一处。" />
   <title>追剧聚合 · 一个搜索框搜遍所有站</title>
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="追剧聚合" />
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="topbar">
@@ -29,7 +29,6 @@
       <button class="tab" type="button" data-view="mine">我的</button>
     </nav>
   </header>
-
   <main>
     <section id="view-search" class="view active">
       <form id="search-form" class="searchbar" autocomplete="off">
@@ -40,7 +39,6 @@
         <input id="q" name="q" type="search" placeholder="输入剧名，例如：今天是太阳雨 / 漫长的季节 / 庆余年" spellcheck="false" />
         <button type="submit" id="go">搜全网</button>
       </form>
-
       <div class="chips" id="chips">
         <button class="chip active" type="button" data-cat="">全部可搜索站点</button>
         <button class="chip" type="button" data-cat="online_video">在线影视</button>
@@ -48,7 +46,6 @@
         <button class="chip" type="button" data-cat="magnet_search">磁力 BT</button>
         <button class="chip" type="button" data-cat="subtitles">字幕</button>
       </div>
-
       <div id="statusline" class="statusline hidden"></div>
       <div id="results" class="results"></div>
       <div id="empty" class="empty">
@@ -57,12 +54,10 @@
         <p class="muted">结果来自各站点自己的搜索结果页，点击即在浏览器打开</p>
       </div>
     </section>
-
     <section id="view-nav" class="view">
       <div class="chips" id="nav-chips"></div>
       <div id="nav-grid" class="nav-grid"></div>
     </section>
-
     <section id="view-mine" class="view">
       <div class="panel">
         <div class="panel-head">
@@ -75,7 +70,6 @@
         </div>
         <div id="cmp-out"></div>
       </div>
-
       <div class="panel">
         <div class="panel-head">
           <h2>搜索历史</h2>
@@ -83,7 +77,6 @@
         </div>
         <div id="history-list" class="pill-list"></div>
       </div>
-
       <div class="panel">
         <div class="panel-head">
           <h2>收藏站点</h2>
@@ -93,12 +86,10 @@
       </div>
     </section>
   </main>
-
   <footer>
     <span>本工具仅聚合同一网络中的公开链接，不托管、不转存任何内容。请遵守所在地法律法规，支持正版。</span>
     <span id="meta" class="muted"></span>
   </footer>
-
-  <script src="/app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
