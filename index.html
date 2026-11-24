@@ -602,6 +602,64 @@
       background: var(--panel);
     }
 
+    .station-search {
+      margin-top: 14px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        radial-gradient(120% 140% at 0% 0%, rgba(34,197,94,.10), transparent 44%),
+        var(--panel);
+    }
+
+    .station-search h2 {
+      margin: 0;
+      font-size: 17px;
+      color: var(--text);
+    }
+
+    .station-search-hint {
+      margin: 5px 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .station-search-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 8px;
+    }
+
+    .station-search-link {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-2);
+      transition: border-color .15s ease, background .15s ease, transform .15s ease;
+    }
+
+    .station-search-link:hover {
+      border-color: rgba(34,197,94,.65);
+      background: rgba(34,197,94,.10);
+      transform: translateY(-1px);
+    }
+
+    .station-search-name {
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .station-search-host {
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .toast {
       position: fixed;
       left: 50%;
@@ -745,6 +803,11 @@
             <div style="font-size:16px;font-weight:600;margin-bottom:6px">没有匹配结果</div>
             <div>换个关键词试试，或者清除筛选条件。</div>
           </div>
+          <section class="station-search" id="stationSearch" aria-labelledby="stationSearchTitle" hidden>
+            <h2 id="stationSearchTitle"></h2>
+            <p class="station-search-hint">本站没有收录这部作品，可以带着关键词直接去各站找。</p>
+            <div class="station-search-grid" id="stationSearchGrid"></div>
+          </section>
         </section>
       </div>
     </div>
@@ -971,10 +1034,75 @@
       removed: 3
     };
 
+    const ONLINE_SEARCH_TEMPLATES = {
+      kankanya: 'https://www.kankanya.me/search/-------------.html?wd={query}',
+      'no-video': 'https://www.novipnoad.uk/?s={query}',
+      sotvla: 'https://www.sotvla.cc/search.php?q={query}',
+      appmovie: 'https://www.appmovie.art/index.php/vod/search.html?wd={query}',
+      czzymovie: 'https://www.4kcz.com/nimasile?q={query}',
+      'auete-video': 'https://www.aeete.com/aeete5so.php?searchword={query}',
+      netflixgc: 'https://www.netflixgc.com/vodsearch/-------------.html?wd={query}',
+      nfyingshi: 'https://www.nfyingshi.com/search?q={query}',
+      dbku: 'https://www.dbku.tv/vodsearch/-------------.html?wd={query}',
+      'yingmao-cangku': 'https://www.ymck.pro/search.html?wd={query}',
+      'guangsu-yingshi': 'https://www.yingshiso.link/search.php?searchword={query}',
+      fdzys: 'https://fdzys.com/search?wd={query}',
+      zndy: 'https://zndy.top/index.php?wd={query}',
+      yingshidaquan: 'https://yingshidaquan.top/search.php?q={query}',
+      juzong: 'https://www.juzong01.me/vodsearch/-------------/?wd={query}',
+      jianyunys: 'https://jisuzhuiju.com/search?keyword={query}',
+      pianku: 'https://4k01.pianku.online/vodsearch/-------------.html?wd={query}',
+      '66-dapianwang': 'https://www.77dpw.vip/vodsearch/-------------.html?wd={query}',
+      didahd: 'https://www.didahd.xyz/search/-------------.html?wd={query}',
+      zip0: 'https://zip0.com/search?q={query}',
+      'kanmovie-com-34': 'https://www.kanmovie.com/search?q={query}',
+      'yingxivod-com-53': 'https://yingxivod.com/vod/search.html?wd={query}'
+    };
+
+    function stationSearchUrl(record, query) {
+      const encodedQuery = encodeURIComponent(query);
+      const template = ONLINE_SEARCH_TEMPLATES[record.id];
+      if (template) return template.replace('{query}', encodedQuery);
+
+      const fallbackBase = record.availability?.final_url || record.url;
+      const url = new URL(fallbackBase, window.location.href);
+      url.searchParams.set('wd', query);
+      return url.href;
+    }
+
+    function renderStationSearch(query) {
+      const section = $('stationSearch');
+      const normalizedQuery = query.trim();
+      if (!normalizedQuery) {
+        section.hidden = true;
+        $('stationSearchGrid').innerHTML = '';
+        return;
+      }
+
+      const stations = catalog.records.filter(record => record.category === 'online_video');
+      $('stationSearchTitle').textContent = `在各站搜索“${normalizedQuery}”`;
+      $('stationSearchGrid').innerHTML = stations.map(record => {
+        let hostname = '';
+        try {
+          hostname = new URL(record.availability?.final_url || record.url).host;
+        } catch {}
+
+        return `
+          <a class="station-search-link" href="${escapeHtml(stationSearchUrl(record, normalizedQuery))}" target="_blank" rel="noopener noreferrer" title="在${escapeHtml(record.name)}搜索“${escapeHtml(normalizedQuery)}”">
+            <span class="station-search-name">${escapeHtml(record.name)}</span>
+            <span class="station-search-host">${escapeHtml(hostname)}</span>
+          </a>
+        `;
+      }).join('');
+      section.hidden = false;
+    }
+
     function renderResults() {
       const records = sortRecords(getFilteredRecords());
       $('grid').innerHTML = records.map(itemCard).join('');
       $('empty').hidden = records.length > 0;
+      $('stationSearch').hidden = records.length > 0 || !filters.query.trim();
+      if (records.length === 0) renderStationSearch(filters.query);
 
       const categoryLabel = filters.category === 'all' ? '全部资源' : (CATEGORY_LABELS[filters.category] || filters.category);
       const statusLabel = filters.status === 'all' ? '' : STATUS_LABELS[filters.status] + '状态';
